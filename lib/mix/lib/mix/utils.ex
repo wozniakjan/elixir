@@ -360,34 +360,11 @@ defmodule Mix.Utils do
   end
 
   defp read_httpc(path) do
-    {:ok, _} = Application.ensure_all_started(:ssl)
-    {:ok, _} = Application.ensure_all_started(:inets)
-
-    # Starting an HTTP client profile allows us to scope
-    # the effects of using an HTTP proxy to this function
-    {:ok, _pid} = :inets.start(:httpc, [{:profile, :mix}])
-
-    headers = [{'user-agent', 'Mix/#{System.version}'}]
-    request = {:binary.bin_to_list(path), headers}
-
-    # We are using relaxed: true because some servers is returning a Location
-    # header with relative paths, which does not follow the spec. This would
-    # cause the request to fail with {:error, :no_scheme} unless :relaxed
-    # is given.
-    #
-    # If a proxy environment variable was supplied add a proxy to httpc.
-    http_options = [relaxed: true] ++ proxy_config(path)
-
-    case :httpc.request(:get, request, http_options, [body_format: :binary], :mix) do
-      {:ok, {{_, status, _}, _, body}} when status in 200..299 ->
-        {:ok, body}
-      {:ok, {{_, status, _}, _, _}} ->
-        {:remote, "httpc request failed with: {:bad_status_code, #{status}}"}
-      {:error, reason} ->
-        {:remote, "httpc request failed with: #{inspect reason}"}
-    end
-  after
-    :inets.stop(:httpc, :mix)
+    IO.write("BYPASS_HTTPC read_httpc() " <> path <> "\n")
+    System.cmd("wget", [path])
+    filename = Path.basename(path)
+    IO.write("BYPASS_HTTPC read_httpc() filename " <> filename <> "\n")
+    read_file(filename)
   end
 
   defp file?(path) do
